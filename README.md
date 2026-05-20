@@ -1,8 +1,8 @@
 # Agent3σ-Sweep
 
-Agent3σ：清华×蚂蚁联合发布的Agent安全的 Benchmark
+Agent3σ：清华×蚂蚁联合发布的 Agent安全的 Benchmark
 
-Agent3σ-Sweep 通过静态样本测试Agent的安全决策边界，旨在测试 Agent 的安全性的同时，检测是否存在“过度防御“的现象。Benchmark 共包含203条样本。
+Agent3σ-Sweep 通过静态样本测试Agent的安全决策边界，旨在测试 Agent 的安全性的同时，检测是否存在“过度防御“的现象。
 
 ## 评测框架
 
@@ -48,7 +48,6 @@ configs/                      benchmark runtime config
 docs/                         schema 与实现文档
 metadata/                     skill snapshot 等元数据
 schema/                       正式 schema 与 lite schema
-scripts/rewrite_cases.py      旧 case -> v2 schema 重写脚本
 tests/                        单元测试与集成测试
 Makefile                      常用入口封装
 requirements.txt              Python 依赖
@@ -81,14 +80,14 @@ docker compose version
 
 说明：
 
-- `make dry` / `make check` / `make rewrite` 不依赖 Docker。
+- `make dry` / `make check` 不依赖 Docker。
 - `make run` 与直接执行 benchmark CLI 时，需要本机 Docker daemon 正常运行，且 `docker compose` 命令可用。
 - 首次执行 benchmark 时会自动拉取 `openclaw` 镜像，耗时取决于网络与镜像缓存情况。
 - 运行时 gateway 容器复用 Docker 默认 `bridge` 网络，不会为每个 case 额外创建一张 compose project 网络；这能避免全量跑时耗尽 Docker 默认 IPv4 地址池。
 - `configs/baseline.json` 现在默认给每个 OpenClaw gateway 容器加了资源限制：`2.0` CPU、`4g` 内存、`512` PID；如果宿主机资源或 case 负载不同，可以调整 `runtime.resources`。
 - 如果你不使用 Makefile 默认的 `./.venv/bin/python`，可以在执行时覆盖，例如 `make test PYTHON=python3`，或直接调用 CLI。
 
-运行 benchmark 或 rewrite 时还需要模型提供方 API Key。常见两种方式：
+运行 benchmark 时还需要模型提供方 API Key。常见两种方式：
 
 - OpenAI：`OPENAI_API_KEY`
 - DashScope 兼容模式：`DASHSCOPE_API_KEY`
@@ -107,35 +106,7 @@ docker compose version
 make test
 ```
 
-### 2. 可选：重写 legacy cases
-
-`scripts/rewrite_cases.py` 默认走 DashScope 兼容 OpenAI 接口，默认模型是 `qwen3.6-plus`。
-
-```bash
-export DASHSCOPE_API_KEY=your_key
-make rewrite OVERWRITE=1
-```
-
-如果 rewrite 与其他阶段共用同一套模型接口参数，可以直接设置全局默认变量：
-
-```bash
-export DASHSCOPE_API_KEY=your_key
-
-make rewrite OVERWRITE=1 \
-  REWRITE_CONCURRENCY=8 \
-  BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1 \
-  API_KEY_ENV=DASHSCOPE_API_KEY
-```
-
-`Makefile` 现在支持全局默认变量 `MODEL` / `BASE_URL` / `API_KEY_ENV`。如果 `REWRITE_*`、`PROVIDER_*`、`JUDGE_*` 没有显式指定，就会自动回退到这三个全局变量；只有某一阶段需要单独覆盖时，才再传对应前缀变量。`rewrite` 在 `MODEL` 也未提供时，会继续回退到默认模型 `qwen3.6-plus`。
-
-只重写部分 case：
-
-```bash
-make rewrite CASE_IDS=29,30,70 OVERWRITE=1
-```
-
-### 3. 只做 case 检查
+### 2. 只做 case 检查
 
 这一步不会启动 Docker；会生成 run 目录下的 `run_manifest.json` 和 `case.md`，但不会产生 execution/evaluation/report 产物。
 
@@ -143,7 +114,7 @@ make rewrite CASE_IDS=29,30,70 OVERWRITE=1
 make dry CASE_IDS=41
 ```
 
-### 4. 正式执行 benchmark
+### 3. 正式执行 benchmark
 
 下面是当前最常见的 DashScope 运行方式：
 
@@ -165,7 +136,7 @@ make run CASE_IDS=41 KEEP_RUNTIME=1
 
 说明：`KEEP_RUNTIME=1` 是 debug-only 开关，只会保留最后一个 supported case 的 runtime 现场，且要求 `CONCURRENCY=1`。
 
-### 5. 从已有 evaluation 重建报告
+### 4. 从已有 evaluation 重建报告
 
 ```bash
 make report RUN_ID=run-web-public-20260425-1
@@ -177,7 +148,6 @@ make report RUN_ID=run-web-public-20260425-1
 
 - `make help`
 - `make test`
-- `make rewrite`
 - `make dry`
 - `make check`
 - `make run`
@@ -194,9 +164,8 @@ make report RUN_ID=run-web-public-20260425-1
 - `MODEL=qwen3.6-plus`
 - `BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1`
 - `API_KEY_ENV=DASHSCOPE_API_KEY`
-- `REWRITE_MODEL=...` / `PROVIDER_MODEL=...` / `JUDGE_MODEL=...`
+- `PROVIDER_MODEL=...` / `JUDGE_MODEL=...`
   如果阶段专属变量未设置，会回退到不带前缀的 `MODEL` / `BASE_URL` / `API_KEY_ENV`
-- `REWRITE_CONCURRENCY=50`
 - case 的 canonical `metadata.id` 是字符串，默认与文件名 stem 一致，例如 `0041`；CLI 仍接受 `41` 这种数字简写做筛选
 - `CONCURRENCY=1`
   benchmark 执行的 case 级并发数；会占用从 `gateway_host_port` 开始的连续端口池
